@@ -11,7 +11,6 @@ HEADERS = {
 
 
 def get_repo_info(full_name):
-    
     url = f"https://api.github.com/repos/{full_name}"
     response = requests.get(url, headers=HEADERS)
     if response.status_code != 200:
