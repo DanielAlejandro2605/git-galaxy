@@ -6,53 +6,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Network, Play, RotateCcw, Maximize2 } from "lucide-react";
 
-// Mock data for the force-directed graph
+// Mock data for repositories
 const nodes = [
-  { id: "0", name: "Alice", group: "web3" },
-  { id: "1", name: "Bob", group: "ai" },
-  { id: "2", name: "Carol", group: "hybrid" },
-  { id: "3", name: "David", group: "web3" },
-  { id: "4", name: "Eva", group: "ai" },
-  { id: "Frank", name: "Frank", group: "hybrid" },
-  { id: "6", name: "Grace", group: "web3" },
-  { id: "7", name: "Henry", group: "ai" },
-  { id: "8", name: "Ivy", group: "hybrid" },
-  { id: "9", name: "Jack", group: "web3" },
-  { id: "10", name: "Karen", group: "ai" },
-  { id: "11", name: "Leo", group: "hybrid" },
-  { id: "12", name: "Mona", group: "web3" },
-  { id: "13", name: "Nate", group: "ai" },
-  { id: "14", name: "Olga", group: "hybrid" },
-  { id: "15", name: "Paul", group: "web3" },
-  { id: "16", name: "Quinn", group: "ai" },
-  { id: "17", name: "Rose", group: "hybrid" },
-  { id: "18", name: "Steve", group: "web3" },
-  { id: "19", name: "Tina", group: "ai" }
+  { id: "repo1", name: "OpenAI GPT", type: "ai", stars: 12000, language: "Python", owner: "openai", url: "https://github.com/openai/gpt" },
+  { id: "repo2", name: "Web3.js", type: "web3", stars: 8000, language: "JavaScript", owner: "ethereum", url: "https://github.com/ethereum/web3.js" },
+  { id: "repo3", name: "Hardhat", type: "tool", stars: 6000, language: "TypeScript", owner: "nomiclabs", url: "https://github.com/nomiclabs/hardhat" },
+  { id: "repo4", name: "Supabase", type: "tool", stars: 20000, language: "TypeScript", owner: "supabase", url: "https://github.com/supabase/supabase" },
+  { id: "repo5", name: "LangChain", type: "ai", stars: 15000, language: "Python", owner: "langchain", url: "https://github.com/langchain/langchain" },
 ];
 
 const links = [
-  { source: "0", target: "1" },
-  { source: "1", target: "2" },
-  { source: "2", target: "3" },
-  { source: "0", target: "4" },
-  { source: "0", target: "Frank" },
-  { source: "4", target: "6" },
-  { source: "0", target: "7" },
-  { source: "0", target: "8" },
-  { source: "0", target: "9" },
-  { source: "Frank", target: "10" },
-  { source: "0", target: "11" },
-  { source: "0", target: "12" },
-  { source: "6", target: "13" },
-  { source: "0", target: "14" },
-  { source: "0", target: "15" },
-  { source: "Frank", target: "16" },
-  { source: "0", target: "17" },
-  { source: "0", target: "18" },
-  { source: "0", target: "19" },
-  { source: "3", target: "19" },
-  { source: "12", target: "19" },
-  { source: "13", target: "19" }
+  { source: "repo1", target: "repo5", type: "related" },
+  { source: "repo2", target: "repo3", type: "uses" },
+  { source: "repo3", target: "repo4", type: "depends_on" },
+  { source: "repo5", target: "repo4", type: "uses" },
+  { source: "repo2", target: "repo4", type: "related" },
 ];
 
 const GalaxyVisualization = () => {
@@ -78,13 +46,23 @@ const GalaxyVisualization = () => {
       .attr("height", height)
       .style("background", "transparent");
 
-    // Color scale for different groups
-    const color = (group: string) => {
-      switch (group) {
+    // Color scale for different repo types
+    const color = (type: string) => {
+      switch (type) {
         case "web3": return "hsl(var(--primary))";
         case "ai": return "hsl(var(--accent))";
-        case "hybrid": return "hsl(var(--nebula-purple))";
+        case "tool": return "hsl(var(--nebula-purple))";
         default: return "hsl(var(--muted))";
+      }
+    };
+
+    // Link style by type
+    const linkStroke = (type: string) => {
+      switch (type) {
+        case "related": return "4,2"; // dashed
+        case "uses": return ""; // solid
+        case "depends_on": return "2,2"; // dotted
+        default: return "";
       }
     };
 
@@ -95,7 +73,8 @@ const GalaxyVisualization = () => {
       .selectAll("line")
       .data(links)
       .join("line")
-      .attr("stroke-width", 2);
+      .attr("stroke-width", 2)
+      .attr("stroke-dasharray", d => linkStroke((d as any).type));
 
     // Draw nodes
     const node = svg.append("g")
@@ -104,8 +83,8 @@ const GalaxyVisualization = () => {
       .selectAll("circle")
       .data(nodes)
       .join("circle")
-      .attr("r", 12)
-      .attr("fill", (d: any) => color(d.group))
+      .attr("r", d => 10 + Math.log2((d as any).stars) / 2) // size by stars
+      .attr("fill", (d: any) => color(d.type))
       .call(drag()
         .on("start", (event, d: any) => {
           if (!event.active) simulation.alphaTarget(0.3).restart();
@@ -122,6 +101,38 @@ const GalaxyVisualization = () => {
           d.fy = null;
         })
       );
+
+    // Tooltip
+    const tooltip = select("body")
+      .append("div")
+      .attr("class", "d3-tooltip")
+      .style("position", "absolute")
+      .style("z-index", "10")
+      .style("visibility", "hidden")
+      .style("background", "rgba(0,0,0,0.8)")
+      .style("color", "#fff")
+      .style("padding", "8px 12px")
+      .style("border-radius", "6px")
+      .style("font-size", "13px");
+
+    node.on("mouseover", function (event, d: any) {
+      tooltip.html(
+        `<strong>${d.name}</strong><br/>` +
+        `Owner: ${d.owner}<br/>` +
+        `Language: ${d.language}<br/>` +
+        `Stars: ${d.stars}<br/>` +
+        `<a href='${d.url}' target='_blank' style='color:#aaf'>View Repo</a>`
+      )
+        .style("visibility", "visible");
+    })
+    .on("mousemove", function (event) {
+      tooltip
+        .style("top", (event.pageY + 10) + "px")
+        .style("left", (event.pageX + 10) + "px");
+    })
+    .on("mouseout", function () {
+      tooltip.style("visibility", "hidden");
+    });
 
     // Draw labels
     const label = svg.append("g")
@@ -154,6 +165,7 @@ const GalaxyVisualization = () => {
     // Cleanup on unmount
     return () => {
       simulation.stop();
+      tooltip.remove();
     };
   }, []);
 
