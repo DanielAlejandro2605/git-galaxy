@@ -193,8 +193,8 @@ const GalaxyVisualization = ({ repositories, graphData }: GalaxyVisualizationPro
   }, [graphData, repositories]);
 
   return (
-    <Card className="h-[600px] cosmic-border hover:shadow-lg hover:shadow-accent/10 transition-all duration-300">
-      <CardHeader>
+    <Card className="h-[550px] cosmic-border hover:shadow-lg hover:shadow-accent/10 transition-all duration-300">
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-gradient-to-br from-accent to-nebula-blue cosmic-glow">
@@ -221,8 +221,8 @@ const GalaxyVisualization = ({ repositories, graphData }: GalaxyVisualizationPro
         </div>
       </CardHeader>
       
-      <CardContent className="p-0">
-        <div className="relative bg-gradient-to-br from-galaxy-deep/5 to-galaxy-medium/5 rounded-lg border cosmic-border overflow-hidden h-[480px]">
+      <CardContent className="p-0 pb-4">
+        <div className="relative bg-gradient-to-br from-galaxy-deep/5 to-galaxy-medium/5 rounded-lg border cosmic-border overflow-hidden h-[420px]">
           <div className="flex justify-center items-center h-full">
             {graphData ? (
               <svg ref={svgRef} className="w-full h-full"></svg>
@@ -236,7 +236,7 @@ const GalaxyVisualization = ({ repositories, graphData }: GalaxyVisualizationPro
         </div>
         
         {/* Legend */}
-        <div className="mt-4 grid grid-cols-2 gap-4 px-4">
+        <div className="mt-3 grid grid-cols-2 gap-4 px-4">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-primary rounded-full"></div>
             <span className="text-xs text-muted-foreground">Repositories</span>

@@ -23,8 +23,8 @@ interface RepositoryListProps {
 const RepositoryList = ({ repositories, isLoading }: RepositoryListProps) => {
   if (isLoading) {
     return (
-      <Card className="h-[600px] cosmic-border">
-        <CardHeader>
+      <Card className="h-[550px] cosmic-border">
+        <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
             <GitBranch className="h-5 w-5" />
             Repository Results
@@ -44,8 +44,8 @@ const RepositoryList = ({ repositories, isLoading }: RepositoryListProps) => {
 
   if (repositories.length === 0) {
     return (
-      <Card className="h-[600px] cosmic-border">
-        <CardHeader>
+      <Card className="h-[550px] cosmic-border">
+        <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
             <GitBranch className="h-5 w-5" />
             Repository Results
@@ -68,8 +68,8 @@ const RepositoryList = ({ repositories, isLoading }: RepositoryListProps) => {
   }
 
   return (
-    <Card className="h-[600px] cosmic-border">
-      <CardHeader>
+    <Card className="h-[550px] cosmic-border">
+      <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2">
           <GitBranch className="h-5 w-5" />
           Repository Results
@@ -79,7 +79,7 @@ const RepositoryList = ({ repositories, isLoading }: RepositoryListProps) => {
         </CardDescription>
       </CardHeader>
       <CardContent className="p-0">
-        <ScrollArea className="h-[520px] px-4">
+        <ScrollArea className="h-[470px] px-4">
           <div className="space-y-4">
             {repositories.map((repo, index) => (
               <Card key={index} className="hover:shadow-md transition-all duration-200 border-muted/50">
