@@ -1,4 +1,5 @@
 import os
+from tqdm import tqdm
 import requests
 from dotenv import load_dotenv
 
@@ -16,33 +17,48 @@ def build_query(topics, languages):
     return f"{topic_query} {lang_query}"
 
 
-def search_repos(topics, languages, max_results=10):
+def search_repos(topics, languages, max_results):
     query = build_query(topics, languages)
-    url = f"https://api.github.com/search/repositories?q={query}&sort=stars&order=desc&per_page={min(max_results, 100)}"
-
-    response = requests.get(url, headers=HEADERS)
-    if response.status_code != 200:
-        print("Erreur API:", response.status_code, response.json())
-        return []
-
-    items = response.json().get("items", [])
     results = []
-    for repo in items:
-        results.append({
-            "name": repo["full_name"],
-            "url": repo["html_url"],
-            "description": repo["description"],
-            "stars": repo["stargazers_count"],
-            "topics": repo.get("topics", []),
-            "languages": repo.get("languages", []),
-        })
+
+    per_page = 100
+    total_pages = (max_results + per_page - 1) // per_page  # ceiling division
+
+    for page in tqdm(range(1, total_pages + 1)):
+        url = (
+            f"https://api.github.com/search/repositories"
+            f"?q={query}&sort=stars&order=desc"
+            f"&per_page={per_page}&page={page}"
+        )
+        response = requests.get(url, headers=HEADERS)
+        if response.status_code != 200:
+            print("Error:", response.status_code, response.json())
+            break
+
+        items = response.json().get("items", [])
+        for repo in items:
+            results.append({
+                "name": repo["full_name"],
+                "url": repo["html_url"],
+                "description": repo["description"],
+                "stars": repo["stargazers_count"],
+                "topics": repo.get("topics", []),
+                "languages": repo.get("languages", []),
+            })
+            if len(results) >= max_results:
+                return results
+
+        # Break early if GitHub returns fewer items than requested
+        if len(items) < per_page:
+            break
+
     return results
 
 
 if __name__ == "__main__":
-    topics = ["web3", "blockchain", "nft"]
+    topics = ["web3", "blockchain"]
     languages = ["Solidity", "TypeScript"]
-    max_results = 20
+    max_results = 1000
 
     repos = search_repos(topics, languages, max_results)
 
