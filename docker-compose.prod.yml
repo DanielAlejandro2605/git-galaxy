@@ -9,8 +9,6 @@ services:
       - "8000:8000"
     environment:
       - PORT=8000
-    volumes:
-      - ./services/api/src:/app/src
     restart: unless-stopped
     env_file:
       - .env
@@ -24,14 +22,11 @@ services:
   frontend:
     build:
       context: ./services/frontend
-      dockerfile: dev/Dockerfile.dev
+      dockerfile: dev/Dockerfile
     ports:
       - "8080:8080"
     environment:
       - VITE_API_URL=http://localhost:8000
-    volumes:
-      - ./services/frontend/repo-constellation/src:/app/src
-      - ./services/frontend/repo-constellation/public:/app/public
     restart: unless-stopped
     depends_on:
       - api 

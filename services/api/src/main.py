@@ -2,11 +2,12 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Any
 import os
 import uvicorn
 from dotenv import load_dotenv
 from .modules.gitingest import generate_gitingest_txt
+from .modules.vectorizer import GitGalaxyVectorizer
 
 # Load environment variables
 load_dotenv()
@@ -24,6 +25,20 @@ class GitingestRequest(BaseModel):
     include_gitignored: Optional[bool] = False
     filename: Optional[str] = None
 
+class VectorizeRequest(BaseModel):
+    repository_url: str
+    token: Optional[str] = None
+    include_submodules: Optional[bool] = False
+    include_gitignored: Optional[bool] = False
+
+class QueryRequest(BaseModel):
+    query: str
+    repository_url: str
+    token: Optional[str] = None
+    include_submodules: Optional[bool] = False
+    include_gitignored: Optional[bool] = False
+    include_full_content: Optional[bool] = False
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Git Galaxy API",
@@ -39,6 +54,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Initialize vectorizer
+vectorizer = GitGalaxyVectorizer()
 
 @app.on_event("startup")
 async def startup_event():
@@ -93,6 +111,64 @@ async def gitingest_download(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate text file: {str(e)}")
+
+@app.post("/vectorize", response_model=Dict[str, Any])
+async def vectorize_repository(request: VectorizeRequest):
+    """Vectorize a Git repository for semantic search"""
+    try:
+        # Generate repository text using gitingest
+        file_path, _ = await generate_gitingest_txt(
+            repository_url=request.repository_url,
+            token=request.token,
+            include_submodules=request.include_submodules,
+            include_gitignored=request.include_gitignored
+        )
+        
+        # Read the generated text file
+        with open(file_path, 'r', encoding='utf-8') as f:
+            repo_text = f.read()
+        
+        # Process repository with vectorizer
+        result = vectorizer.process_repository(repo_text)
+        
+        return {
+            "status": "success",
+            "message": f"Repository vectorized successfully. {result['total_files']} files processed.",
+            "data": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to vectorize repository: {str(e)}")
+
+@app.post("/query", response_model=Dict[str, Any])
+async def query_repository(request: QueryRequest):
+    """Query a vectorized repository using semantic search"""
+    try:
+        # Generate repository text using gitingest
+        file_path, _ = await generate_gitingest_txt(
+            repository_url=request.repository_url,
+            token=request.token,
+            include_submodules=request.include_submodules,
+            include_gitignored=request.include_gitignored
+        )
+        
+        # Read the generated text file
+        with open(file_path, 'r', encoding='utf-8') as f:
+            repo_text = f.read()
+        
+        # Query the repository
+        result = vectorizer.query_repository(
+            request.query, 
+            repo_text, 
+            include_full_content=request.include_full_content
+        )
+        
+        return {
+            "status": "success",
+            "message": f"Query processed successfully. Found {len(result['similar_chunks'])} similar chunks.",
+            "data": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to query repository: {str(e)}")
 
 if __name__ == "__main__":
     # Get port from environment variable or default to 8000
