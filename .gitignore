@@ -1,2 +1,5 @@
 # env & secrets
 **/*.env
+
+# irrelevant
+**/*out*
