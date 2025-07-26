@@ -14,6 +14,19 @@ interface Repository {
   stars: number;
   topics: string[];
   readme?: string;
+  common_topics?: string[];
+  topics_ratio?: number;
+}
+
+interface GraphNode {
+  id: number;
+  name: string;
+  type: "topic" | "repo";
+}
+
+interface GraphLink {
+  source: number;
+  target: number;
 }
 
 interface SearchResponse {
@@ -31,10 +44,18 @@ interface SearchResponse {
       name_keyword: string;
       topics: string[];
     };
+    graph: {
+      nodes: GraphNode[];
+      links: GraphLink[];
+    };
   };
 }
 
-const RepositoryForm = () => {
+interface RepositoryFormProps {
+  onSearchResults: (repositories: Repository[], graphData: { nodes: GraphNode[]; links: GraphLink[] }) => void;
+}
+
+const RepositoryForm = ({ onSearchResults }: RepositoryFormProps) => {
   const [projectDescription, setProjectDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchResults, setSearchResults] = useState<Repository[]>([]);
@@ -67,6 +88,10 @@ const RepositoryForm = () => {
       
       if (data.status === "success") {
         setSearchResults(data.data.repositories);
+        
+        // Pass both repositories and graph data to parent component
+        onSearchResults(data.data.repositories, data.data.graph);
+        
         toast({
           title: "Search Completed Successfully!",
           description: `Found ${data.data.total_found} repositories matching your description.`,

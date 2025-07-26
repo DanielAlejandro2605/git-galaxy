@@ -58,6 +58,37 @@ class PromptSearchRequest(BaseModel):
     max_results: Optional[int] = 500
     limit_results: Optional[int] = 10
 
+# Add this function to your main.py (after the imports)
+def generate_graph_relations(repos):
+    """Generate graph nodes and links for visualization"""
+    all_topics = set()
+    for repo in repos:
+        all_topics |= set(repo['topics'])
+
+    # Assign topic IDs
+    topic_list = list(all_topics)
+    topic_id_map = {topic: i for i, topic in enumerate(topic_list)}
+
+    nodes = []
+    # Topic nodes
+    for i, topic in enumerate(topic_list):
+        nodes.append({"id": i, "name": topic, "type": "topic"})
+
+    # Repo nodes
+    for i, repo in enumerate(repos):
+        repo_id = i + len(topic_list)
+        nodes.append({"id": repo_id, "name": repo['name'], "type": "repo"})
+
+    # Links
+    links = []
+    for i, repo in enumerate(repos):
+        repo_id = i + len(topic_list)
+        for topic in repo['topics']:
+            topic_id = topic_id_map[topic]
+            links.append({"source": repo_id, "target": topic_id})
+
+    return nodes, links
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Git Galaxy API",
@@ -122,10 +153,20 @@ async def search_repositories_by_prompt(request: PromptSearchRequest):
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
         
+        # Generate graph data from the repositories
+        repos = result['repositories']
+        nodes, links = generate_graph_relations(repos)
+        
         return {
             "status": "success",
-            "message": f"Found {len(result['repositories'])} repositories based on prompt",
-            "data": result
+            "message": f"Found {len(repos)} repositories based on prompt",
+            "data": {
+                **result,
+                "graph": {
+                    "nodes": nodes,
+                    "links": links
+                }
+            }
         }
     except HTTPException:
         raise

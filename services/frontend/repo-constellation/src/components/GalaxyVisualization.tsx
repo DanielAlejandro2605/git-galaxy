@@ -6,28 +6,41 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Network, Play, RotateCcw, Maximize2 } from "lucide-react";
 
-// Mock data for repositories
-const nodes = [
-  { id: "repo1", name: "OpenAI GPT", type: "ai", stars: 12000, language: "Python", owner: "openai", url: "https://github.com/openai/gpt" },
-  { id: "repo2", name: "Web3.js", type: "web3", stars: 8000, language: "JavaScript", owner: "ethereum", url: "https://github.com/ethereum/web3.js" },
-  { id: "repo3", name: "Hardhat", type: "tool", stars: 6000, language: "TypeScript", owner: "nomiclabs", url: "https://github.com/nomiclabs/hardhat" },
-  { id: "repo4", name: "Supabase", type: "tool", stars: 20000, language: "TypeScript", owner: "supabase", url: "https://github.com/supabase/supabase" },
-  { id: "repo5", name: "LangChain", type: "ai", stars: 15000, language: "Python", owner: "langchain", url: "https://github.com/langchain/langchain" },
-];
+interface GraphNode {
+  id: number;
+  name: string;
+  type: "topic" | "repo";
+}
 
-const links = [
-  { source: "repo1", target: "repo5", type: "related" },
-  { source: "repo2", target: "repo3", type: "uses" },
-  { source: "repo3", target: "repo4", type: "depends_on" },
-  { source: "repo5", target: "repo4", type: "uses" },
-  { source: "repo2", target: "repo4", type: "related" },
-];
+interface GraphLink {
+  source: number;
+  target: number;
+}
 
-const GalaxyVisualization = () => {
+interface Repository {
+  name: string;
+  url: string;
+  description: string;
+  stars: number;
+  topics: string[];
+  readme?: string;
+  common_topics?: string[];
+  topics_ratio?: number;
+}
+
+interface GalaxyVisualizationProps {
+  repositories: Repository[];
+  graphData: {
+    nodes: GraphNode[];
+    links: GraphLink[];
+  } | null;
+}
+
+const GalaxyVisualization = ({ repositories, graphData }: GalaxyVisualizationProps) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
-    if (!svgRef.current) return;
+    if (!svgRef.current || !graphData) return;
 
     const width = 800;
     const height = 500;
@@ -36,8 +49,8 @@ const GalaxyVisualization = () => {
     const svgElement = select(svgRef.current);
     svgElement.selectAll("*").remove();
 
-    const simulation = forceSimulation(nodes as any)
-      .force("link", forceLink(links).id((d: any) => d.id).distance(80))
+    const simulation = forceSimulation(graphData.nodes as any)
+      .force("link", forceLink(graphData.links).id((d: any) => d.id).distance(80))
       .force("charge", forceManyBody().strength(-200))
       .force("center", forceCenter(width / 2, height / 2));
 
@@ -46,24 +59,21 @@ const GalaxyVisualization = () => {
       .attr("height", height)
       .style("background", "transparent");
 
-    // Color scale for different repo types
+    // Color scale for different node types
     const color = (type: string) => {
       switch (type) {
-        case "web3": return "hsl(var(--primary))";
-        case "ai": return "hsl(var(--accent))";
-        case "tool": return "hsl(var(--nebula-purple))";
+        case "topic": return "hsl(var(--accent))";
+        case "repo": return "hsl(var(--primary))";
         default: return "hsl(var(--muted))";
       }
     };
 
-    // Link style by type
-    const linkStroke = (type: string) => {
-      switch (type) {
-        case "related": return "4,2"; // dashed
-        case "uses": return ""; // solid
-        case "depends_on": return "2,2"; // dotted
-        default: return "";
-      }
+    // Size scale for nodes
+    const getNodeSize = (node: GraphNode) => {
+      if (node.type === "topic") return 8;
+      // For repo nodes, find the corresponding repository data
+      const repo = repositories.find(r => r.name === node.name);
+      return repo ? 10 + Math.log2(repo.stars) / 2 : 10;
     };
 
     // Draw links
@@ -71,19 +81,18 @@ const GalaxyVisualization = () => {
       .attr("stroke", "hsl(var(--primary))")
       .attr("stroke-opacity", 0.4)
       .selectAll("line")
-      .data(links)
+      .data(graphData.links)
       .join("line")
-      .attr("stroke-width", 2)
-      .attr("stroke-dasharray", d => linkStroke((d as any).type));
+      .attr("stroke-width", 2);
 
     // Draw nodes
     const node = svg.append("g")
       .attr("stroke", "#fff")
       .attr("stroke-width", 2)
       .selectAll("circle")
-      .data(nodes)
+      .data(graphData.nodes)
       .join("circle")
-      .attr("r", d => 10 + Math.log2((d as any).stars) / 2) // size by stars
+      .attr("r", (d: any) => getNodeSize(d))
       .attr("fill", (d: any) => color(d.type))
       .call(drag()
         .on("start", (event, d: any) => {
@@ -116,13 +125,23 @@ const GalaxyVisualization = () => {
       .style("font-size", "13px");
 
     node.on("mouseover", function (event, d: any) {
-      tooltip.html(
-        `<strong>${d.name}</strong><br/>` +
-        `Owner: ${d.owner}<br/>` +
-        `Language: ${d.language}<br/>` +
-        `Stars: ${d.stars}<br/>` +
-        `<a href='${d.url}' target='_blank' style='color:#aaf'>View Repo</a>`
-      )
+      let tooltipContent = "";
+      
+      if (d.type === "topic") {
+        tooltipContent = `<strong>Topic: ${d.name}</strong>`;
+      } else {
+        const repo = repositories.find(r => r.name === d.name);
+        if (repo) {
+          tooltipContent = `
+            <strong>${repo.name}</strong><br/>
+            Stars: ${repo.stars}<br/>
+            Topics: ${repo.topics.join(", ")}<br/>
+            <a href='${repo.url}' target='_blank' style='color:#aaf'>View Repo</a>
+          `;
+        }
+      }
+      
+      tooltip.html(tooltipContent)
         .style("visibility", "visible");
     })
     .on("mousemove", function (event) {
@@ -137,7 +156,7 @@ const GalaxyVisualization = () => {
     // Draw labels
     const label = svg.append("g")
       .selectAll("text")
-      .data(nodes)
+      .data(graphData.nodes)
       .join("text")
       .text((d: any) => d.name)
       .attr("dx", 15)
@@ -167,7 +186,7 @@ const GalaxyVisualization = () => {
       simulation.stop();
       tooltip.remove();
     };
-  }, []);
+  }, [graphData, repositories]);
 
   return (
     <section id="explore" className="py-24 relative">
@@ -186,7 +205,7 @@ const GalaxyVisualization = () => {
             </span>
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Navigate through interconnected Web3 and AI projects. Discover relationships, 
+            Navigate through interconnected repositories and topics. Discover relationships, 
             clusters, and innovation pathways in the open-source ecosystem.
           </p>
         </div>
@@ -201,7 +220,7 @@ const GalaxyVisualization = () => {
                 <div>
                   <CardTitle>Force-Directed Graph</CardTitle>
                   <CardDescription>
-                    Interactive visualization of project relationships
+                    Interactive visualization of repository-topic relationships
                   </CardDescription>
                 </div>
               </div>
@@ -222,27 +241,26 @@ const GalaxyVisualization = () => {
           <CardContent>
             <div className="relative bg-gradient-to-br from-galaxy-deep/5 to-galaxy-medium/5 rounded-lg border cosmic-border overflow-hidden">
               <div className="flex justify-center items-center p-4">
-                <svg ref={svgRef} className="w-full h-[500px]"></svg>
+                {graphData ? (
+                  <svg ref={svgRef} className="w-full h-[500px]"></svg>
+                ) : (
+                  <div className="text-center text-muted-foreground py-20">
+                    <Network className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Search for repositories to see the interactive graph visualization</p>
+                  </div>
+                )}
               </div>
             </div>
             
             {/* Legend */}
-            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="mt-6 grid grid-cols-2 gap-4">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-primary rounded-full"></div>
-                <span className="text-xs text-muted-foreground">Web3 Projects</span>
+                <span className="text-xs text-muted-foreground">Repositories</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-accent rounded-full"></div>
-                <span className="text-xs text-muted-foreground">AI Projects</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-nebula-purple rounded-full"></div>
-                <span className="text-xs text-muted-foreground">Hybrid Projects</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-muted rounded-full"></div>
-                <span className="text-xs text-muted-foreground">Related Tools</span>
+                <span className="text-xs text-muted-foreground">Topics</span>
               </div>
             </div>
           </CardContent>
