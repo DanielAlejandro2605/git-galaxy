@@ -1,9 +1,12 @@
 import os
 import sys
+import base64
 from tqdm import tqdm
 import requests
 from dotenv import load_dotenv
+from query_openai import generate_infos_with_openai
 sys.stdout.reconfigure(encoding='utf-8')
+
 
 load_dotenv()
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -11,6 +14,18 @@ HEADERS = {
     "Accept": "application/vnd.github.mercy-preview+json",  # nécessaire pour les topics
     "Authorization": f"Bearer {GITHUB_TOKEN}" if GITHUB_TOKEN else None,
 }
+
+
+def get_repo_readme(full_name):
+    url = f"https://api.github.com/repos/{full_name}/readme"
+    response = requests.get(url, headers=HEADERS)
+
+    if response.status_code == 200:
+        data = response.json()
+        if data.get("encoding") == "base64":
+            content = base64.b64decode(data["content"]).decode("utf-8", errors="ignore")
+            return content
+    return None
 
 
 def get_repo_info(full_name):
@@ -32,15 +47,15 @@ def get_repo_info(full_name):
     }
 
 
-def build_query(topics, languages, in_name):
-    topic_query = " ".join([f"topic:{t}" for t in topics])
-    lang_query = " ".join([f"language:{l}" for l in languages])
+def build_query(topics, in_name):
+    topic_query = " OR ".join([f"(topic:{t})" for t in topics])
     name_query = (" " + in_name + " in:name") if in_name != "" else ""
-    return f"{topic_query} {lang_query}{name_query}"
+    return f"{topic_query}{name_query}"
 
 
-def search_repos(in_name, topics, languages, max_results):
-    query = build_query(topics, languages, in_name)
+def search_repos(in_name, topics, max_results):
+    query = build_query(topics, in_name)
+    print(query, file=sys.stderr)
     results = []
 
     per_page = 100
@@ -67,22 +82,19 @@ def search_repos(in_name, topics, languages, max_results):
                 "description": repo["description"],
                 "stars": repo["stargazers_count"],
                 "topics": repo.get("topics", []),
-                "languages": repo.get("languages", []),
             })
             if len(results) >= max_results:
-                print("########### THE END (RESULTS) ###########", file=sys.stderr)
                 return results
 
         # Break early if GitHub returns fewer items than requested
         if len(items) < per_page:
-            print("########### THE END ###########", file=sys.stderr)
             break
 
     return results
 
 
-def sort_by_similar_topics(repos, topics, languages):
-    full_topics_list = set(topic.lower() for topic in topics + languages)
+def sort_by_similar_topics(repos, topics):
+    full_topics_list = set(topic.lower() for topic in topics)
     for repo in repos:
         repo_topics = set(topic.lower() for topic in repo['topics'])
         repo['common_topics'] = repo_topics & full_topics_list
@@ -93,22 +105,17 @@ def sort_by_similar_topics(repos, topics, languages):
 
 if __name__ == "__main__":
     max_results = 500
-    repo_name = "JeanJano/ft_irc"
-    # repo_name = ""
-    in_name = "irc"
+    user_prompt = input("prompt:")
+    infos = generate_infos_with_openai(user_prompt)
+    in_name, topics = infos['name_keyword'], infos['topics']
+    # in_name = "medical"
+    # topics = ["computer-vision"]
 
-    if repo_name:
-        repo = get_repo_info(repo_name)
-        topics = repo['topics']
-        languages = repo['languages']
-    else:
-        topics = ["web3", "blockchain"]
-        languages = ["Solidity", "TypeScript"]
-
-    print(topics, file=sys.stderr)
-    print(languages, file=sys.stderr)
-    repos = search_repos(in_name, topics, languages, max_results)
-    repos = sort_by_similar_topics(repos, topics, languages)
+    print(in_name, topics, file=sys.stderr)
+    repos = search_repos(in_name, topics, max_results)
+    repos = sort_by_similar_topics(repos, topics)
+    # limit to first 10:
+    repos = repos[:10]
 
     for i, repo in enumerate(repos, 1):
         print(f"{i}. {repo['name']} ; stars: {repo['stars']}")
@@ -116,8 +123,10 @@ if __name__ == "__main__":
         print(f"  description: {repo['description']}")
         if repo['topics']:
             print(f"  topics: {', '.join(repo['topics'])}")
-        if repo['languages']:
-            print(f"  languages: {', '.join(repo['languages'])}")
         print(f"  commont topics: {', '.join(repo['common_topics'])}")
         print(f"  topics ratio: {repo['topics_ratio']}")
         print("----")
+        # print("README.md:")
+        # print(get_repo_readme(repo['name']))
+        print("==========================================")
+        repo['readme'] = get_repo_readme(repo['name'])
