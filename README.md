@@ -10,12 +10,12 @@ A FastAPI application for Git Galaxy with Docker support and repos relationships
 - CORS support
 - Interactive API documentation
 - Git repository metadata extraction
-- Visualization of Repos relationships in a graph structure
+- Visualization
+ of Repos relationships in a graph structure
 
 ## Demo
 
-[![Watch the video](https://vimeo.com/1104748922/0f345fd5c1?ts=114603&share=copy)](https://vimeo.com/1104748922/0f345fd5c1?ts=114603&share=copy)
-
+[![Watch the video](https://github.com/user-attachments/assets/24a869a8-3efd-42ff-839b-1d9b7d38b492)](https://vimeo.com/1104748922/0f345fd5c1?ts=114603&share=copy)
 
 ## Quick Start with Docker
 
