@@ -1,9 +1,1 @@
-<<<<<<< HEAD
 .env
-=======
-# env & secrets
-**/*.env
-
-# irrelevant
-**/*out*
->>>>>>> main
