@@ -3,6 +3,7 @@ import sys
 from tqdm import tqdm
 import requests
 from dotenv import load_dotenv
+sys.stdout.reconfigure(encoding='utf-8')
 
 load_dotenv()
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -31,14 +32,15 @@ def get_repo_info(full_name):
     }
 
 
-def build_query(topics, languages):
+def build_query(topics, languages, in_name):
     topic_query = " ".join([f"topic:{t}" for t in topics])
     lang_query = " ".join([f"language:{l}" for l in languages])
-    return f"{topic_query} {lang_query}"
+    name_query = (" " + in_name + " in:name") if in_name != "" else ""
+    return f"{topic_query} {lang_query}{name_query}"
 
 
-def search_repos(topics, languages, max_results):
-    query = build_query(topics, languages)
+def search_repos(in_name, topics, languages, max_results):
+    query = build_query(topics, languages, in_name)
     results = []
 
     per_page = 100
@@ -48,8 +50,8 @@ def search_repos(topics, languages, max_results):
     for page in tqdm(range(1, total_pages + 1)):
         url = (
             f"https://api.github.com/search/repositories"
-            # f"?q={query}&sort=stars&order=desc"
-            f"?q={query}"
+            f"?q={query}&sort=stars&order=desc"
+            # f"?q={query}"
             f"&per_page={per_page}&page={page}"
         )
         response = requests.get(url, headers=HEADERS)
@@ -91,8 +93,10 @@ def sort_by_similar_topics(repos, topics, languages):
 
 if __name__ == "__main__":
     max_results = 500
-    repo_name = "JeanJano/rubik"
+    repo_name = "JeanJano/ft_irc"
     # repo_name = ""
+    in_name = "irc"
+
     if repo_name:
         repo = get_repo_info(repo_name)
         topics = repo['topics']
@@ -103,7 +107,7 @@ if __name__ == "__main__":
 
     print(topics, file=sys.stderr)
     print(languages, file=sys.stderr)
-    repos = search_repos(topics, languages, max_results)
+    repos = search_repos(in_name, topics, languages, max_results)
     repos = sort_by_similar_topics(repos, topics, languages)
 
     for i, repo in enumerate(repos, 1):
