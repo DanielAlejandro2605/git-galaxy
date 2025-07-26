@@ -42,7 +42,8 @@ def search_repos(topics, languages, max_results):
     results = []
 
     per_page = 100
-    total_pages = (max_results + per_page - 1) // per_page  # ceiling division
+    total_pages = max_results // per_page + max_results % per_page
+    print(total_pages, file=sys.stderr)
 
     for page in tqdm(range(1, total_pages + 1)):
         url = (
@@ -67,12 +68,12 @@ def search_repos(topics, languages, max_results):
                 "languages": repo.get("languages", []),
             })
             if len(results) >= max_results:
-                print("########### THE END (RESULTS) ###########")
+                print("########### THE END (RESULTS) ###########", file=sys.stderr)
                 return results
 
         # Break early if GitHub returns fewer items than requested
         if len(items) < per_page:
-            print("########### THE END ###########")
+            print("########### THE END ###########", file=sys.stderr)
             break
 
     return results
@@ -83,12 +84,13 @@ def sort_by_similar_topics(repos, topics, languages):
     for repo in repos:
         repo_topics = set(topic.lower() for topic in repo['topics'])
         repo['common_topics'] = repo_topics & full_topics_list
+        repo['topics_ratio'] = len(repo['common_topics']) / (len(full_topics_list) + len(repo_topics))
 
-    return sorted(repos, key=lambda repo: len(repo['common_topics']), reverse=True)
+    return sorted(repos, key=lambda repo: repo['topics_ratio'], reverse=True)
 
 
 if __name__ == "__main__":
-    max_results = 1000
+    max_results = 500
     repo_name = "JeanJano/rubik"
     # repo_name = ""
     if repo_name:
@@ -105,12 +107,13 @@ if __name__ == "__main__":
     repos = sort_by_similar_topics(repos, topics, languages)
 
     for i, repo in enumerate(repos, 1):
-        print(f"{i}. {repo['name']} ⭐ {repo['stars']}")
-        print(f"   🔗 {repo['url']}")
-        print(f"   📝 {repo['description']}")
+        print(f"{i}. {repo['name']} ; stars: {repo['stars']}")
+        print(f"  url: {repo['url']}")
+        print(f"  description: {repo['description']}")
         if repo['topics']:
-            print(f"   🏷️ {', '.join(repo['topics'])}")
+            print(f"  topics: {', '.join(repo['topics'])}")
         if repo['languages']:
-            print(f"   🌐 {', '.join(repo['languages'])}")
-        print(f"   🏷️ {', '.join(repo['common_topics'])}")
+            print(f"  languages: {', '.join(repo['languages'])}")
+        print(f"  commont topics: {', '.join(repo['common_topics'])}")
+        print(f"  topics ratio: {repo['topics_ratio']}")
         print("----")
