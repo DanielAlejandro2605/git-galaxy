@@ -16,6 +16,11 @@ A FastAPI application for Git Galaxy with Docker support and repos relationships
 ## Demo
 
 [![Watch the video](https://github.com/user-attachments/assets/24a869a8-3efd-42ff-839b-1d9b7d38b492)](https://vimeo.com/1104748922/0f345fd5c1?ts=114603&share=copy)
+<br>
+<br>
+<br>
+<img width="1467" height="872" alt="Screenshot 2025-07-26 at 17 34 26" src="https://github.com/user-attachments/assets/0e7b788a-ee09-43e0-96bc-7167e55c30c5" />
+
 
 ## Quick Start with Docker
 
