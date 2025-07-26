@@ -1,10 +1,11 @@
 import os
 import sys
 import base64
-from tqdm import tqdm
 import requests
+from tqdm import tqdm
 from dotenv import load_dotenv
 from query_openai import generate_infos_with_openai
+from generate_graph_relations import generate_graph_relations
 sys.stdout.reconfigure(encoding='utf-8')
 
 
@@ -102,14 +103,10 @@ def sort_by_similar_topics(repos, topics):
 
     return sorted(repos, key=lambda repo: repo['topics_ratio'], reverse=True)
 
-
-if __name__ == "__main__":
-    max_results = 500
-    user_prompt = input("prompt:")
+def repo_getter(user_input):
+    max_results = 250
     infos = generate_infos_with_openai(user_prompt)
     in_name, topics = infos['name_keyword'], infos['topics']
-    # in_name = "medical"
-    # topics = ["computer-vision"]
 
     print(in_name, topics, file=sys.stderr)
     repos = search_repos(in_name, topics, max_results)
@@ -130,3 +127,9 @@ if __name__ == "__main__":
         # print(get_repo_readme(repo['name']))
         print("==========================================")
         repo['readme'] = get_repo_readme(repo['name'])
+
+    nodes, links = generate_graph_relations(repos)
+    return repos, nodes, links
+
+if __name__ == "__main__":
+    repo_getter(input("prompt: "))
