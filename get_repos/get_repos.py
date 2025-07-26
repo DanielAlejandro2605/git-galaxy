@@ -3,6 +3,7 @@ import sys
 from tqdm import tqdm
 import requests
 from dotenv import load_dotenv
+sys.stdout.reconfigure(encoding='utf-8')
 
 load_dotenv()
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
@@ -91,7 +92,7 @@ def sort_by_similar_topics(repos, topics, languages):
 
 if __name__ == "__main__":
     max_results = 500
-    repo_name = "JeanJano/rubik"
+    repo_name = "JeanJano/ft_irc"
     # repo_name = ""
     if repo_name:
         repo = get_repo_info(repo_name)
