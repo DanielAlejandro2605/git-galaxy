@@ -10,11 +10,15 @@ interface GraphNode {
   id: number;
   name: string;
   type: "topic" | "repo";
+  x?: number;
+  y?: number;
+  fx?: number | null;
+  fy?: number | null;
 }
 
 interface GraphLink {
-  source: number;
-  target: number;
+  source: number | GraphNode;
+  target: number | GraphNode;
 }
 
 interface Repository {
@@ -94,17 +98,17 @@ const GalaxyVisualization = ({ repositories, graphData }: GalaxyVisualizationPro
       .join("circle")
       .attr("r", (d: any) => getNodeSize(d))
       .attr("fill", (d: any) => color(d.type))
-      .call(drag()
-        .on("start", (event, d: any) => {
+      .call(drag<SVGCircleElement, GraphNode>()
+        .on("start", (event, d) => {
           if (!event.active) simulation.alphaTarget(0.3).restart();
           d.fx = d.x;
           d.fy = d.y;
         })
-        .on("drag", (event, d: any) => {
+        .on("drag", (event, d) => {
           d.fx = event.x;
           d.fy = event.y;
         })
-        .on("end", (event, d: any) => {
+        .on("end", (event, d) => {
           if (!event.active) simulation.alphaTarget(0);
           d.fx = null;
           d.fy = null;
@@ -167,10 +171,10 @@ const GalaxyVisualization = ({ repositories, graphData }: GalaxyVisualizationPro
 
     simulation.on("tick", () => {
       link
-        .attr("x1", (d: any) => d.source.x)
-        .attr("y1", (d: any) => d.source.y)
-        .attr("x2", (d: any) => d.target.x)
-        .attr("y2", (d: any) => d.target.y);
+        .attr("x1", (d: any) => (d.source as GraphNode).x)
+        .attr("y1", (d: any) => (d.source as GraphNode).y)
+        .attr("x2", (d: any) => (d.target as GraphNode).x)
+        .attr("y2", (d: any) => (d.target as GraphNode).y);
 
       node
         .attr("cx", (d: any) => d.x)
@@ -189,84 +193,61 @@ const GalaxyVisualization = ({ repositories, graphData }: GalaxyVisualizationPro
   }, [graphData, repositories]);
 
   return (
-    <section id="explore" className="py-24 relative">
-      <div className="absolute inset-0 bg-gradient-to-b from-muted/20 to-transparent"></div>
-      
-      <div className="container mx-auto px-4 relative">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 text-accent mb-4">
-            <Network className="h-4 w-4" />
-            <span className="text-sm font-medium">Interactive Exploration</span>
+    <Card className="h-[600px] cosmic-border hover:shadow-lg hover:shadow-accent/10 transition-all duration-300">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-accent to-nebula-blue cosmic-glow">
+              <Network className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <CardTitle>Force-Directed Graph</CardTitle>
+              <CardDescription>
+                Interactive visualization of repository-topic relationships
+              </CardDescription>
+            </div>
           </div>
-          <h2 className="text-4xl font-bold mb-4">
-            Explore the{" "}
-            <span className="bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
-              Project Galaxy
-            </span>
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Navigate through interconnected repositories and topics. Discover relationships, 
-            clusters, and innovation pathways in the open-source ecosystem.
-          </p>
-        </div>
-
-        <Card className="cosmic-border hover:shadow-lg hover:shadow-accent/10 transition-all duration-300">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-gradient-to-br from-accent to-nebula-blue cosmic-glow">
-                  <Network className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <CardTitle>Force-Directed Graph</CardTitle>
-                  <CardDescription>
-                    Interactive visualization of repository-topic relationships
-                  </CardDescription>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="cosmic-border">
-                  <RotateCcw className="h-4 w-4" />
-                  Reset
-                </Button>
-                <Button variant="outline" size="sm" className="cosmic-border">
-                  <Maximize2 className="h-4 w-4" />
-                  Fullscreen
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
           
-          <CardContent>
-            <div className="relative bg-gradient-to-br from-galaxy-deep/5 to-galaxy-medium/5 rounded-lg border cosmic-border overflow-hidden">
-              <div className="flex justify-center items-center p-4">
-                {graphData ? (
-                  <svg ref={svgRef} className="w-full h-[500px]"></svg>
-                ) : (
-                  <div className="text-center text-muted-foreground py-20">
-                    <Network className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Search for repositories to see the interactive graph visualization</p>
-                  </div>
-                )}
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="cosmic-border">
+              <RotateCcw className="h-4 w-4" />
+              Reset
+            </Button>
+            <Button variant="outline" size="sm" className="cosmic-border">
+              <Maximize2 className="h-4 w-4" />
+              Fullscreen
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      
+      <CardContent className="p-0">
+        <div className="relative bg-gradient-to-br from-galaxy-deep/5 to-galaxy-medium/5 rounded-lg border cosmic-border overflow-hidden h-[480px]">
+          <div className="flex justify-center items-center h-full">
+            {graphData ? (
+              <svg ref={svgRef} className="w-full h-full"></svg>
+            ) : (
+              <div className="text-center text-muted-foreground">
+                <Network className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Search for repositories to see the interactive graph visualization</p>
               </div>
-            </div>
-            
-            {/* Legend */}
-            <div className="mt-6 grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-primary rounded-full"></div>
-                <span className="text-xs text-muted-foreground">Repositories</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-accent rounded-full"></div>
-                <span className="text-xs text-muted-foreground">Topics</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </section>
+            )}
+          </div>
+        </div>
+        
+        {/* Legend */}
+        <div className="mt-4 grid grid-cols-2 gap-4 px-4">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-primary rounded-full"></div>
+            <span className="text-xs text-muted-foreground">Repositories</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 bg-accent rounded-full"></div>
+            <span className="text-xs text-muted-foreground">Topics</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
