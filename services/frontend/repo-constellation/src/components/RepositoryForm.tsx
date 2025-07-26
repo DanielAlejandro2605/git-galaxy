@@ -6,24 +6,84 @@ import { Textarea } from "@/components/ui/textarea";
 import { Search, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+// Define the API response types
+interface Repository {
+  name: string;
+  url: string;
+  description: string;
+  stars: number;
+  topics: string[];
+  readme?: string;
+}
+
+interface SearchResponse {
+  status: string;
+  message: string;
+  data: {
+    user_prompt: string;
+    extracted_info: {
+      name_keyword: string;
+      topics: string[];
+    };
+    repositories: Repository[];
+    total_found: number;
+    search_criteria: {
+      name_keyword: string;
+      topics: string[];
+    };
+  };
+}
+
 const RepositoryForm = () => {
   const [projectDescription, setProjectDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchResults, setSearchResults] = useState<Repository[]>([]);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSearchResults([]);
 
-    // Simulate API call
-    setTimeout(() => {
-      toast({
-        title: "Search Submitted Successfully!",
-        description: "We're analyzing the galaxy to find projects matching your description.",
+    try {
+      const response = await fetch("http://localhost:8000/repositories/search-by-prompt", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt: projectDescription,
+          max_results: 20,
+          limit_results: 10,
+        }),
       });
-      setProjectDescription("");
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      const data: SearchResponse = await response.json();
+      
+      if (data.status === "success") {
+        setSearchResults(data.data.repositories);
+        toast({
+          title: "Search Completed Successfully!",
+          description: `Found ${data.data.total_found} repositories matching your description.`,
+        });
+      } else {
+        throw new Error(data.message || "Search failed");
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+      toast({
+        title: "Search Failed",
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 2000);
+    }
   };
 
   return (
@@ -116,6 +176,51 @@ const RepositoryForm = () => {
                   )}
                 </Button>
               </form>
+
+              {/* Display search results */}
+              {searchResults.length > 0 && (
+                <div className="mt-8 space-y-4">
+                  <h3 className="text-lg font-semibold">Search Results</h3>
+                  <div className="space-y-3">
+                    {searchResults.map((repo, index) => (
+                      <Card key={index} className="hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <h4 className="font-medium text-primary">
+                                <a 
+                                  href={repo.url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="hover:underline"
+                                >
+                                  {repo.name}
+                                </a>
+                              </h4>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {repo.description}
+                              </p>
+                              <div className="flex items-center gap-4 mt-2">
+                                <span className="text-xs bg-muted px-2 py-1 rounded">
+                                  ⭐ {repo.stars} stars
+                                </span>
+                                {repo.topics.slice(0, 3).map((topic, topicIndex) => (
+                                  <span 
+                                    key={topicIndex} 
+                                    className="text-xs bg-primary/10 text-primary px-2 py-1 rounded"
+                                  >
+                                    {topic}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
