@@ -1,25 +1,25 @@
 version: '3.8'
 
 services:
-  api:
-    build:
-      context: ./services/api
-      dockerfile: dev/Dockerfile
-    ports:
-      - "8000:8000"
-    environment:
-      - PORT=8000
-    volumes:
-      - ./services/api/src:/app/src
-    restart: unless-stopped
-    env_file:
-      - .env
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+  # api:
+  #   build:
+  #     context: ./services/api
+  #     dockerfile: dev/Dockerfile
+  #   ports:
+  #     - "8000:8000"
+  #   environment:
+  #     - PORT=8000
+  #   volumes:
+  #     - ./services/api/src:/app/src
+  #   restart: unless-stopped
+  #   env_file:
+  #     - .env
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 40s
 
   frontend:
     build:
@@ -33,5 +33,5 @@ services:
       - ./services/frontend/repo-constellation/src:/app/src
       - ./services/frontend/repo-constellation/public:/app/public
     restart: unless-stopped
-    depends_on:
-      - api 
+    # depends_on:
+    #   - api 

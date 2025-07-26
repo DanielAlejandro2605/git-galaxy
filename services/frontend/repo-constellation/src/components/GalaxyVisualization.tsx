@@ -1,8 +1,162 @@
+import React, { useRef, useEffect } from "react";
+import { select } from "d3-selection";
+import { forceSimulation, forceLink, forceManyBody, forceCenter } from "d3-force";
+import { drag } from "d3-drag";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Network, Play, RotateCcw, Maximize2 } from "lucide-react";
 
+// Mock data for the force-directed graph
+const nodes = [
+  { id: "0", name: "Alice", group: "web3" },
+  { id: "1", name: "Bob", group: "ai" },
+  { id: "2", name: "Carol", group: "hybrid" },
+  { id: "3", name: "David", group: "web3" },
+  { id: "4", name: "Eva", group: "ai" },
+  { id: "Frank", name: "Frank", group: "hybrid" },
+  { id: "6", name: "Grace", group: "web3" },
+  { id: "7", name: "Henry", group: "ai" },
+  { id: "8", name: "Ivy", group: "hybrid" },
+  { id: "9", name: "Jack", group: "web3" },
+  { id: "10", name: "Karen", group: "ai" },
+  { id: "11", name: "Leo", group: "hybrid" },
+  { id: "12", name: "Mona", group: "web3" },
+  { id: "13", name: "Nate", group: "ai" },
+  { id: "14", name: "Olga", group: "hybrid" },
+  { id: "15", name: "Paul", group: "web3" },
+  { id: "16", name: "Quinn", group: "ai" },
+  { id: "17", name: "Rose", group: "hybrid" },
+  { id: "18", name: "Steve", group: "web3" },
+  { id: "19", name: "Tina", group: "ai" }
+];
+
+const links = [
+  { source: "0", target: "1" },
+  { source: "1", target: "2" },
+  { source: "2", target: "3" },
+  { source: "0", target: "4" },
+  { source: "0", target: "Frank" },
+  { source: "4", target: "6" },
+  { source: "0", target: "7" },
+  { source: "0", target: "8" },
+  { source: "0", target: "9" },
+  { source: "Frank", target: "10" },
+  { source: "0", target: "11" },
+  { source: "0", target: "12" },
+  { source: "6", target: "13" },
+  { source: "0", target: "14" },
+  { source: "0", target: "15" },
+  { source: "Frank", target: "16" },
+  { source: "0", target: "17" },
+  { source: "0", target: "18" },
+  { source: "0", target: "19" },
+  { source: "3", target: "19" },
+  { source: "12", target: "19" },
+  { source: "13", target: "19" }
+];
+
 const GalaxyVisualization = () => {
+  const svgRef = useRef<SVGSVGElement | null>(null);
+
+  useEffect(() => {
+    if (!svgRef.current) return;
+
+    const width = 800;
+    const height = 500;
+
+    // Clear previous renders
+    const svgElement = select(svgRef.current);
+    svgElement.selectAll("*").remove();
+
+    const simulation = forceSimulation(nodes as any)
+      .force("link", forceLink(links).id((d: any) => d.id).distance(80))
+      .force("charge", forceManyBody().strength(-200))
+      .force("center", forceCenter(width / 2, height / 2));
+
+    const svg = svgElement
+      .attr("width", width)
+      .attr("height", height)
+      .style("background", "transparent");
+
+    // Color scale for different groups
+    const color = (group: string) => {
+      switch (group) {
+        case "web3": return "hsl(var(--primary))";
+        case "ai": return "hsl(var(--accent))";
+        case "hybrid": return "hsl(var(--nebula-purple))";
+        default: return "hsl(var(--muted))";
+      }
+    };
+
+    // Draw links
+    const link = svg.append("g")
+      .attr("stroke", "hsl(var(--primary))")
+      .attr("stroke-opacity", 0.4)
+      .selectAll("line")
+      .data(links)
+      .join("line")
+      .attr("stroke-width", 2);
+
+    // Draw nodes
+    const node = svg.append("g")
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 2)
+      .selectAll("circle")
+      .data(nodes)
+      .join("circle")
+      .attr("r", 12)
+      .attr("fill", (d: any) => color(d.group))
+      .call(drag()
+        .on("start", (event, d: any) => {
+          if (!event.active) simulation.alphaTarget(0.3).restart();
+          d.fx = d.x;
+          d.fy = d.y;
+        })
+        .on("drag", (event, d: any) => {
+          d.fx = event.x;
+          d.fy = event.y;
+        })
+        .on("end", (event, d: any) => {
+          if (!event.active) simulation.alphaTarget(0);
+          d.fx = null;
+          d.fy = null;
+        })
+      );
+
+    // Draw labels
+    const label = svg.append("g")
+      .selectAll("text")
+      .data(nodes)
+      .join("text")
+      .text((d: any) => d.name)
+      .attr("dx", 15)
+      .attr("dy", "0.35em")
+      .style("fill", "hsl(var(--foreground))")
+      .style("font-size", "12px")
+      .style("font-weight", "500");
+
+    simulation.on("tick", () => {
+      link
+        .attr("x1", (d: any) => d.source.x)
+        .attr("y1", (d: any) => d.source.y)
+        .attr("x2", (d: any) => d.target.x)
+        .attr("y2", (d: any) => d.target.y);
+
+      node
+        .attr("cx", (d: any) => d.x)
+        .attr("cy", (d: any) => d.y);
+
+      label
+        .attr("x", (d: any) => d.x)
+        .attr("y", (d: any) => d.y);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      simulation.stop();
+    };
+  }, []);
+
   return (
     <section id="explore" className="py-24 relative">
       <div className="absolute inset-0 bg-gradient-to-b from-muted/20 to-transparent"></div>
@@ -54,60 +208,9 @@ const GalaxyVisualization = () => {
           </CardHeader>
           
           <CardContent>
-            {/* Placeholder for D3.js visualization */}
-            <div className="relative h-96 bg-gradient-to-br from-galaxy-deep/5 to-galaxy-medium/5 rounded-lg border cosmic-border overflow-hidden">
-              {/* Simulated network nodes */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="text-center space-y-4">
-                  <div className="relative">
-                    {/* Central node */}
-                    <div className="w-16 h-16 bg-gradient-to-br from-primary to-accent rounded-full cosmic-glow mx-auto flex items-center justify-center">
-                      <Network className="h-8 w-8 text-white" />
-                    </div>
-                    
-                    {/* Surrounding nodes */}
-                    {[...Array(8)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="absolute w-8 h-8 bg-gradient-to-br from-nebula-purple to-nebula-blue rounded-full opacity-70 animate-pulse"
-                        style={{
-                          left: `${50 + 40 * Math.cos((i * Math.PI) / 4)}%`,
-                          top: `${50 + 40 * Math.sin((i * Math.PI) / 4)}%`,
-                          transform: 'translate(-50%, -50%)',
-                          animationDelay: `${i * 0.2}s`
-                        }}
-                      />
-                    ))}
-                    
-                    {/* Connection lines */}
-                    <svg className="absolute inset-0 w-full h-full">
-                      {[...Array(8)].map((_, i) => (
-                        <line
-                          key={i}
-                          x1="50%"
-                          y1="50%"
-                          x2={`${50 + 40 * Math.cos((i * Math.PI) / 4)}%`}
-                          y2={`${50 + 40 * Math.sin((i * Math.PI) / 4)}%`}
-                          stroke="hsl(var(--primary))"
-                          strokeWidth="1"
-                          opacity="0.3"
-                          className="animate-pulse"
-                          style={{ animationDelay: `${i * 0.1}s` }}
-                        />
-                      ))}
-                    </svg>
-                  </div>
-                  
-                  <div className="bg-card/80 backdrop-blur-sm rounded-lg p-4 max-w-sm mx-auto border cosmic-border">
-                    <p className="text-sm text-muted-foreground mb-3">
-                    D3.js visualization will be integrated here
-                    </p>
-                    <Button variant="cosmic" size="sm" className="w-full">
-                      <Play className="h-4 w-4" />
-                      Start Simulation
-                    </Button>
-                  </div>
-                </div>
+            <div className="relative bg-gradient-to-br from-galaxy-deep/5 to-galaxy-medium/5 rounded-lg border cosmic-border overflow-hidden">
+              <div className="flex justify-center items-center p-4">
+                <svg ref={svgRef} className="w-full h-[500px]"></svg>
               </div>
             </div>
             
